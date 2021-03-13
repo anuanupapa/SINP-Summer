@@ -1,0 +1,83 @@
+#define tag_probe_cxx
+#include "tag_probe.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+  
+
+void tag_probe::Loop()
+{
+  if (fChain == 0) return;
+    
+  auto c = new TCanvas();
+  Long64_t nentries = fChain->GetEntriesFast();
+  auto h = new TH1F("h","probe_method",160,-10,150);
+  Long64_t nbytes = 0, nb = 0;
+  for (Long64_t jentry=0; jentry<nentries;jentry++) {
+    Long64_t ientry = LoadTree(jentry);
+    if (ientry < 0) break;
+    int tag;
+    TLorentzVector v1,v2;
+    nb = fChain->GetEntry(jentry);   nbytes += nb;
+    // if (Cut(ientry) < 0) continue;                                                                                                                                                                                                       
+    if((nEle<2)) continue;
+    for(int i=0; i<nEle; ++i)
+      {
+        if (fabs(eleSCEta->at(i))<1.479 && eleHoverE->at(i)<0.0414 && eleSigmaIEtaIEtaFull5x5->at(i)<0.00998 &&  eleMissHits->at(i)<=1 && eleConvVeto->at(i)==1 && elePt->at(i)>20)
+	  {
+	    tag=i;
+	    break;
+	  }
+      }
+    float mag;
+
+       for(int k=0;  k<nEle; ++k)
+      {
+
+	if (k==tag) continue;
+      	 
+	if(fabs(eleSCEta->at(k))<1.479 && eleHoverE->at(k)<0.0414 && eleSigmaIEtaIEtaFull5x5->at(k)<0.00998 &&  eleMissHits->at(k)<=1 && eleConvVeto->at(k)==1 && elePt->at(k)>5 && eleCharge->at(tag)!=eleCharge->at(k))
+	  {
+		v2.SetPtEtaPhiE(elePt->at(k),eleEta->at(k),elePhi->at(k),eleEn->at(k));
+		v1.SetPtEtaPhiE(elePt->at(tag),eleEta->at(tag),elePhi->at(tag),eleEn->at(tag));
+
+		mag=(v1+v2).M();
+		if (mag>60 && mag <120 ){
+		  h->Fill(mag);
+		  break;
+		  
+		}
+      	      }
+	  
+	
+      }
+    
+  }
+  h->Draw();
+  //  TF1 *func = new TF1("func",mybw,0,150);
+  Double_t mybw(Double_t* x, Double_t* par) ;
+  int   division = h->GetNbinsX();
+  float massMIN = h->GetBinLowEdge(1);
+  float massMAX = h->GetBinLowEdge(division+1);
+  //  float BIN_SIZE = h->GetBinWidth(1);
+  
+  TF1 *func = new TF1("mybw",mybw,massMIN, massMAX,3);
+  func->SetParameter(0,300.0);   func->SetParName(0,"const");
+  func->SetParameter(2,-90.0);     func->SetParName(1,"sigma");
+  func->SetParameter(1,4.0);    func->SetParName(2,"mean");
+  
+  h->Fit(func);
+  func->Draw("Same");
+  c->Print("tag_probe_ele_pos_fitted.pdf");
+}
+
+Double_t mybw(Double_t* x, Double_t* par)
+{
+  Double_t arg1 = 14.0/22.0;
+  Double_t arg2 = par[1]*par[1]*par[2]*par[2];
+  Double_t arg3 = ((x[0]*x[0]) - (par[2]*par[2]))*((x[0]*x[0]) - (par[2]*par[2]));
+  Double_t arg4 = x[0]*x[0]*x[0]*x[0]*((par[1]*par[1])/(par[2]*par[2]));
+  return par[0]*arg1*arg2/(arg3 + arg4);
+}
+

@@ -1,0 +1,35 @@
+#define muon_cxx
+#include "muon.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void muon::Loop()
+{
+  auto t = new TCanvas();
+   if (fChain == 0) return;
+   
+   Long64_t nentries = fChain->GetEntriesFast();
+
+   auto h = new TH1F("h","Z Boson using muon;Energy GeV;Number of collisons",160,-10,150);
+   Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+     TLorentzVector v1,v2;
+     float mag;
+     
+     Long64_t ientry = LoadTree(jentry);
+     if (ientry < 0) break;
+     nb = fChain->GetEntry(jentry);   nbytes += nb;
+     // if (Cut(ientry) < 0) continue;
+     if(nMu>1){
+	 v1.SetPtEtaPhiE(muPt->at(0),muEta->at(0),muPhi->at(0),muEn->at(0));
+	 v2.SetPtEtaPhiE(muPt->at(1),muEta->at(1),muPhi->at(1),muEn->at(1));          
+	 mag=(v1+v2).M();
+	 h->Fill(mag);
+
+     }
+   }
+   h->Draw();
+   t->Print("muon.pdf");
+   
+}

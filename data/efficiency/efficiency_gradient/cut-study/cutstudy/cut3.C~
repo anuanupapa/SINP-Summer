@@ -1,0 +1,114 @@
+#define cut3_cxx
+#include "cut3.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void cut3::Loop()
+{
+  auto t = new TCanvas();
+  double_t ef[100];
+  double_t valu[100];
+  Int_t z=100;
+  Double_t ef2[100];
+  for(int y=0; y<z; ++y)
+    {
+      Double_t passing_probe=0;
+      Double_t failing_probe=0;
+      TLorentzVector v1, v2;
+      Float_t mag;
+      if (fChain == 0) return;
+
+      Long64_t nentries = fChain->GetEntriesFast();
+
+      Long64_t nbytes = 0, nb = 0;
+      for (Long64_t jentry=0; jentry<nentries;jentry++) {
+        Long64_t ientry = LoadTree(jentry);
+        if (ientry < 0) break;
+        nb = fChain->GetEntry(jentry);   nbytes += nb;
+
+        Int_t tag;
+        Int_t c=0;
+        Int_t charge=0;
+        if(nEle>1)
+          {
+            for (int i=0; i<nEle; ++i)
+              {
+                if(cut3::test(i)==true)
+                  {
+                    tag=i;
+                    charge=eleCharge->at(i);
+                    c=c+1;
+                    v1.SetPtEtaPhiE(elePt->at(tag),eleEta->at(tag),elePhi->at(tag),eleEn->at(tag));
+                    break;
+                  }
+              }
+
+            Int_t probe;
+            for (int a=0; a<nEle; ++a)
+              {
+                if(a==tag) continue;
+                if(fabs(eleSCEta->at(a))<1.479 && eleHoverE->at(a)<0.0414 /*&& eleSigmaIEtaIEtaFull5x5->at(a)<0.00998 */&& eleMissHits->at(a)<=1 && eleConvVeto->at(a)==1 && elePt->at(a)>10 && fabs(eleEoverPInv->at(a))<0.0129 && fabs(eledEtaAtVtx->at(a))<0.00308 && fabs(eledPhiAtVtx->at(a))<0.0816 && eleCharge->at(a)!=charge )
+                  {
+                    c=c+1;
+                    v2.SetPtEtaPhiE(elePt->at(a),eleEta->at(a),elePhi->at(a),eleEn->at(a));
+                    probe = a;
+
+                    break;
+                  }
+                else if(1.479 < abs(eleSCEta->at(a))  && abs(eleSCEta->at(a))< 2.4 && eleHoverE->at(a)<0.0641 && /*eleSigmaIEtaIEtaFull5x5->at(a)<0.0292 && */eleMissHits->at(a)<=1 && eleConvVeto->at(a)==1 && elePt->at(a)>10 && fabs(eleEoverPInv->at(a))<0.0129 && fabs(eledEtaAtVtx->at(a))<0.00605 && fabs(eledPhiAtVtx->at(a))<0.0394 && eleCharge->at(a)!=charge)
+                  {
+                    v2.SetPtEtaPhiE(elePt->at(a),eleEta->at(a),elePhi->at(a),eleEn->at(a));
+
+                    probe = a;
+                    c=c+1;
+                    break;
+                  }
+              }
+            mag = (v1+v2).M();
+            if(c!=2) continue;
+            Int_t p;
+            if(mag>110 || mag<70) continue;
+
+            if(fabs(eleSCEta->at(probe))<1.479 /*&& eleSigmaIEtaIEtaFull5x5->at(probe)<0+0.00012*y*/)
+              {
+                if(eleSigmaIEtaIEtaFull5x5->at(probe)<0+0.0004*y)
+                  {
+                    passing_probe = passing_probe + 1;
+                  }
+                else
+                  {
+                    failing_probe = failing_probe + 1;
+                  }
+
+              }
+            else if(1.479 < abs(eleSCEta->at(probe)) && abs(eleSCEta->at(probe))< 2.4/* && eleSigmaIEtaIEtaFull5x5->at(probe)<0+0.0004*y*/)
+              {
+                if(eleSigmaIEtaIEtaFull5x5->at(probe)<0+0.0004*y)
+                  {
+                    passing_probe = passing_probe + 1;
+                  }
+                else
+                  {
+                    failing_probe = failing_probe + 1;
+                  }
+
+              }
+          }
+      }
+
+      Double_t effhisto = (passing_probe)/(passing_probe + failing_probe);
+      Double_t fa = 0+0.0004*y;
+      ef[y]=effhisto;
+      ef2[y]=fa;
+      if(y==10) cout<<"10%"<<endl;
+      if(y==25) cout<<"25%"<<endl;
+      if(y==50) cout<<"50%"<<endl;
+      if(y==80) cout<<"80%"<<endl;
+    }
+  auto gr = new TGraph(z,ef2,ef);
+  gr->Draw("A*");
+
+  t->Print("eleSigmaIEtaIEtaFull5x5_endcap_passing_by_passing+failing_vs_values.pdf");
+
+}

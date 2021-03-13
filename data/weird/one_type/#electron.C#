@@ -1,0 +1,107 @@
+#define electron_cxx
+#include "electron.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void electron::Loop()
+{
+//   In a ROOT session, you can do:
+//      root> .L electron.C
+//      root> electron t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+   if (fChain == 0) return;
+   auto c = new TCanvas();
+ 
+ 
+   Long64_t nentries = fChain->GetEntriesFast();
+   auto h1 = new TH1F("h1","2 positrons(+) with highest invariant;invariant of particle in GeV;number of such collisions",200,0,200);
+   auto h2 = new TH1F("h2","2 eletrons(-) with highest invariant;invariant of particle in GeV;number of such collisions",200,0,200);
+   
+Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+     if(nEle>1){
+       int m=0;
+       TLorentzVector v1,v2;
+       float mag;
+       vector<int> v;
+       int n=0;
+       for(int i=0; i<nEle; ++i)
+	 {
+	   
+	   if(eleCharge->at(i)==1)
+	     {
+	       v.push_back(i);
+	       m=m+1;
+	     }
+	   if(m==2 && n==0){
+	     v1.SetPtEtaPhiE(elePt->at(v[0]),eleEta->at(v[0]),elePhi->at(v[0]),eleEn->at(v[0]));
+	     v2.SetPtEtaPhiE(elePt->at(v[1]),eleEta->at(v[1]),elePhi->at(v[1]),eleEn->at(v[1]));
+	     n=n+1;
+	     mag=(v1+v2).M();
+	     h1->Fill(mag);
+	     // cout<<mag<<endl;
+	
+	   }
+     
+	 }
+       
+     }
+     if(nEle>1){
+       int m=0;
+       TLorentzVector v1,v2;
+       float mag;
+       vector<int> v;
+       int n=0;
+       for(int i=0; i<nEle; ++i)
+         {
+
+           if(eleCharge->at(i)==-1)
+             {
+               v.push_back(i);
+               m=m+1;
+             }
+           if(m==2 && n==0){
+             v1.SetPtEtaPhiE(elePt->at(v[0]),eleEta->at(v[0]),elePhi->at(v[0]),eleEn->at(v[0]));
+             v2.SetPtEtaPhiE(elePt->at(v[1]),eleEta->at(v[1]),elePhi->at(v[1]),eleEn->at(v[1]));
+             n=n+1;
+             mag=(v1+v2).M();
+             h2->Fill(mag);
+	     //     cout<<mag<<endl;
+        
+           }
+
+         }
+
+     }
+     Long64_t ientry = LoadTree(jentry);
+     if (ientry < 0) break;
+     nb = fChain->GetEntry(jentry);   nbytes += nb;
+     // if (Cut(ientry) < 0) continue;
+   }
+ 
+   auto h3 = new TH1F(*h1);
+   h3->Divide(h2);
+   h3->Draw();
+   c->Print("ratio_between_electron_positron.pdf");
+   //   c->Print("only_positrons.pdf");
+}

@@ -1,0 +1,73 @@
+#define tag_probe_cxx
+#include "tag_probe.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void tag_probe::Loop()
+{
+//   In a ROOT session, you can do:
+//      root> .L tag_probe.C
+//      root> tag_probe t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+   if (fChain == 0) return;
+   auto c = new TCanvas();
+   Long64_t nentries = fChain->GetEntriesFast();
+   auto h = new TH1F("h","probe_histo",160,-10,150);
+   Long64_t nbytes = 0, nb = 0;
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+      Long64_t ientry = LoadTree(jentry);
+      if (ientry < 0) break;
+      nb = fChain->GetEntry(jentry);   nbytes += nb;
+      // if (Cut(ientry) < 0) continue;
+      if(nMu<2) continue;
+      int tag;
+      int mag;
+      for(int i=0; i<nMu; ++i)
+	{
+	
+	  if(muEn->at(i)>5)
+	    {
+	      tag=i;
+	      break;
+	    }
+	}
+      TLorentzVector v1,v2;
+      for(int j=0; j<nMu; ++j)
+	{
+	  if(j==tag) continue;
+	  if(muCharge->at(tag)!=muCharge->at(j) && muPt->at(j)>5)
+	    {
+	      v1.SetPtEtaPhiE(muPt->at(j),muEta->at(j),muPhi->at(j),muEn->at(j));
+	      v2.SetPtEtaPhiE(muPt->at(tag),muEta->at(tag),muPhi->at(tag),muEn->at(tag));
+	   	    
+	      mag=(v1+v2).M();
+      	      if(mag<150 && mag>50){
+	      h->Fill(mag);
+	      break;
+	      }
+	    }
+	}
+   }
+   h->Draw();
+   c->Print("tag_probe_pos_neg.pdf");
+}

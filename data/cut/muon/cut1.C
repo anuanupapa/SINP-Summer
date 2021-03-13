@@ -1,0 +1,75 @@
+#define cut1_cxx
+#include "cut1.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void cut1::Loop()
+{
+//   In a ROOT session, you can do:
+//      root> .L cut1.C
+//      root> cut1 t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+  if (fChain == 0) return;
+  auto c = new TCanvas();
+  auto h = new TH1F("h","graph",210,-10,200);
+  Long64_t nentries = fChain->GetEntriesFast();
+  Long64_t nbytes = 0, nb = 0;
+  for (Long64_t jentry=0; jentry<nentries;jentry++) {
+    Long64_t ientry = LoadTree(jentry);
+    if (ientry < 0) break;
+    nb = fChain->GetEntry(jentry);   nbytes += nb;
+    // if (Cut(ientry) < 0) continue;                                                                                                                                                                                                                                                         
+    if(nMu>1){
+      int p;
+      float mag;
+      TLorentzVector v1,v2;
+      int l=-1;
+      for(int j=0; j<nMu; ++j)
+	{
+	  if(muPt->at(j)<25) continue;
+	  if(muPt->at(j)>25)
+	    {
+	      p=j;
+	      break;
+	    }
+	}
+      for(int i=0; i<nMu; ++i)
+        {
+          l=l+1;
+	  if(muPt->at(i)<25) continue;
+          if(muCharge->at(p)!=muCharge->at(i)) break;
+        }
+      if(muCharge->at(p)!=muCharge->at(l))
+        {
+          v1.SetPtEtaPhiE(muPt->at(p),muEta->at(p),muPhi->at(p),muEn->at(p));
+          v2.SetPtEtaPhiE(muPt->at(l),muEta->at(l),muPhi->at(l),muEn->at(l));
+          mag=(v1+v2).M();
+          h->Fill(mag);
+          cout<<mag<<endl;
+        }
+    }
+
+  }
+  h->Draw();
+  c->Print("muon_opp_charge_pair1.pdf");
+}

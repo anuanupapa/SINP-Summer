@@ -1,0 +1,161 @@
+#define cut_value_cxx
+#include "cut_value.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void cut_value::Loop()
+{
+  auto t = new TCanvas();
+  double ef[100];
+  double valu[100];
+  Int_t z=100;
+  for(int y=0; y<z; ++y)
+    {
+      if (fChain == 0) return;
+      //  auto t = new TCanvas();
+      //  t->Divide(1,2,0,0);
+      Long64_t nentries = fChain->GetEntriesFast();
+      Double_t passing_probe=0;
+      Double_t failing_probe=0;
+      Long64_t nbytes = 0, nb = 0;
+      // auto h1 = new TH1F("h1","passing",200,0,200);
+      // auto h2 = new TH1F("h2","failing",200,0,200);
+      TLorentzVector v1,v2;
+      
+      for (Long64_t jentry=0; jentry<nentries;jentry++)
+	{
+	  Long64_t ientry = LoadTree(jentry);
+	  if (ientry < 0) break;
+	  Float_t mag;
+	  nb = fChain->GetEntry(jentry);   nbytes += nb;
+	  Int_t tag;
+	  Int_t c=0;
+	  Int_t charge=0;
+	  if(nEle<2) continue;
+	  for (int i=0; i<nEle; ++i)
+	    {
+	      if(cut_value::test(i)==true)
+		{
+		  tag=i;
+		  charge=eleCharge->at(i);
+		  c=c+1;
+		  v1.SetPtEtaPhiE(elePt->at(tag),eleEta->at(tag),elePhi->at(tag),eleEn->at(tag));
+		  break;
+		}
+	    }
+	  
+	  Int_t probe;
+	  for (int a=0; a<nEle; ++a)
+	    {
+	      if(a==tag) continue;
+	      if(fabs(eleSCEta->at(a))<1.479 && eleHoverE->at(a)<0.0414 && eleSigmaIEtaIEtaFull5x5->at(a)<0.00998 && eleMissHits->at(a)<=1 && eleConvVeto->at(a)==1 && elePt->at(a)>10 && fabs(eleEoverPInv->at(a))<0.0129 && fabs(eledEtaAtVtx->at(a))<0.00308 &&/* fabs(eledPhiAtVtx->at(a))<0.0816 &&*/ eleCharge->at(a)!=charge )
+		{
+		  c=c+1;
+		  v2.SetPtEtaPhiE(elePt->at(a),eleEta->at(a),elePhi->at(a),eleEn->at(a));
+		  probe = a;
+
+		  break;
+		}
+	      else if(1.479 < abs(eleSCEta->at(a))  && abs(eleSCEta->at(a))< 2.4 && eleHoverE->at(a)<0.0641 && eleSigmaIEtaIEtaFull5x5->at(a)<0.0292 && eleMissHits->at(a)<=1 &&  eleConvVeto->at(a)==1 && elePt->at(a)>10 && fabs(eleEoverPInv->at(a))<0.0129 && fabs(eledEtaAtVtx->at(a))<0.00605 && /*fabs(eledPhiAtVtx->at(a))<0.0394 && */eleCharge->at(a)!=charge)
+		{
+		  v2.SetPtEtaPhiE(elePt->at(a),eleEta->at(a),elePhi->at(a),eleEn->at(a));
+
+		  probe = a;
+		  c=c+1;
+		  break;
+		}
+	    }
+	  mag = (v1+v2).M();
+	  if(c!=2) continue;
+	  Int_t p;
+	  if(mag>110 || mag<70) continue;
+	  
+	  if(fabs(eleSCEta->at(probe))<1.479 && eledPhiAtVtx->at(probe)<(0.0766+0.0001*y))
+	    {
+	     
+	      passing_probe = passing_probe + 1;
+	    }
+	  else if(1.479 < abs(eleSCEta->at(probe)) && abs(eleSCEta->at(probe))< 2.4 && eledPhiAtVtx->at(probe)<0.0344+0.0001*y )
+	    {
+	     
+	      passing_probe = passing_probe + 1;
+	    }
+	  else
+	    {
+	     
+	      failing_probe = failing_probe + 1;
+	    }
+	}
+
+      Double_t effhisto = (passing_probe)/(passing_probe + failing_probe);
+      ef[y]=effhisto;
+      valu[y]=-0.0050+0.0001*y;
+      if(y==10) cout<<"10%"<<endl;
+      if(y==25) cout<<"25%"<<endl;
+      if(y==50) cout<<"50%"<<endl;
+      if(y==80) cout<<"80%"<<endl;
+
+      
+      /*      t->cd(1);
+      h1->Draw();
+      //  TF1 *func = new TF1("func",mybw,0,150);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+      Double_t mybw(Double_t* x, Double_t* par) ;
+      int   division = h1->GetNbinsX();
+      float massMIN = h1->GetBinLowEdge(1);
+      float massMAX = h1->GetBinLowEdge(division+1);
+      //  float BIN_SIZE = h->GetBinWidth(1);                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+      
+      TF1 *func1 = new TF1("mybw",mybw,massMIN, massMAX,3);
+      func1->SetParameter(0,300.0);   func1->SetParName(0,"const");
+      func1->SetParameter(2,-90.0);     func1->SetParName(1,"sigma");
+      func1->SetParameter(1,4.0);    func1->SetParName(2,"mean");
+      
+      h1->Fit(func1);
+      func1->Draw("Same");
+      
+      
+      
+      t->cd(2);
+      h2->Draw();
+      
+      TF1 *func2 = new TF1("mybw",mybw,massMIN, massMAX,3);
+      func2->SetParameter(0,300.0);   func2->SetParName(0,"const");
+      func2->SetParameter(2,-90.0);     func2->SetParName(1,"sigma");
+      func2->SetParameter(1,4.0);    func2->SetParName(2,"mean");
+      
+      h2->Fit(func2);
+      func2->Draw("Same");
+      
+      Double_t intval1 = func1->Integral(60,120);
+      Double_t intval2 = func2->Integral(60,120);
+      cout<<"Integral from passing_probe="<<intval1<<" Integral from failing_probe="<<intval2<<endl;
+      
+      Double_t effgraph = (intval1)/(intval1+intval2);
+      cout<<"Efficiency from histogram : "<<effhisto<<"  Efficiency from fitted function : "<<effgraph<<endl;
+      
+      Double_t diff = abs(effhisto-effgraph);
+      
+      cout<<"The difference between histogram total and fitted graph integral is = "<<diff<<endl;
+      */ 
+    }
+  auto gr = new TGraph(z,valu,ef);
+  gr->Draw("A*");
+  cout<<"IAKFJNAKJDNF"<<endl;
+  t->Print("eledPhiAtVtx_central2.pdf");
+  
+}
+
+/*
+Double_t mybw(Double_t* x, Double_t* par)
+{
+  Double_t arg1 = 14.0/22.0;
+  Double_t arg2 = par[1]*par[1]*par[2]*par[2];
+  Double_t arg3 = ((x[0]*x[0]) - (par[2]*par[2]))*((x[0]*x[0]) - (par[2]*par[2]));
+  Double_t arg4 = x[0]*x[0]*x[0]*x[0]*((par[1]*par[1])/(par[2]*par[2]));
+  return par[0]*arg1*arg2/(arg3 + arg4);
+}
+
+*/
+
+

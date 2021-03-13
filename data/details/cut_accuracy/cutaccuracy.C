@@ -1,0 +1,72 @@
+#define cutaccuracy_cxx
+#include "cutaccuracy.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void cutaccuracy::Loop()
+{
+  if (fChain == 0) return;
+
+  Long64_t nentries = fChain->GetEntriesFast();
+  auto t=new TCanvas();
+  auto h1 = new TH1F("h1","Histo_cut_ele_pos;Invariant in GeV;Number of such events",210,-10,200);
+  Long64_t nbytes = 0, nb = 0;
+  for (Long64_t jentry=0; jentry<nentries;jentry++) {
+    Long64_t ientry = LoadTree(jentry);
+    if (ientry < 0) break;
+    nb = fChain->GetEntry(jentry);   nbytes += nb;
+    // if (Cut(ientry) < 0) continue;                                                                                                                                                                                                                                                        \
+                                                                                                                                                                                                                                                                                              
+    if(nEle<2) continue;
+    int m=0,r=0;
+    TLorentzVector v1,v2;
+    float mag1;
+    int qset=0;
+
+    for(Int_t i=0; i<nEle; ++i)
+      {
+
+        if(cutaccuracy::test(i)==true && eleCharge->at(i)!=qset)
+          {
+            if(m==0)
+              {
+                v1.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+                m=m+1;
+                qset=eleCharge->at(i);
+                r=r+1;
+              }
+            else {
+              v2.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+              r=r+1;
+              break;
+            }
+          }
+        else if(cutaccuracy::test(i)==true && eleCharge->at(i)!=qset)
+          {
+            if(m==0)
+              {
+                v1.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+                r=r+1;
+                qset=eleCharge->at(i);
+                m=m+1;
+              }
+            else  {
+              v2.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+              r=r+1;
+              break;
+            }
+          }
+
+      }
+    if(r==2){
+      mag1=(v1+v2).M();
+      h1->Fill(mag1);
+    }
+
+  }
+  h1->Draw();
+  t->Print("ZBosons_ele_cut_all.pdf");
+
+}
+

@@ -1,0 +1,94 @@
+#define efficient_each_cxx
+#include "efficient_each.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void efficient_each::Loop()
+{
+  if (fChain == 0) return;
+  
+  Long64_t nentries = fChain->GetEntriesFast();
+  TLorentzVector v1,v2;
+  Double_t passing_probe=0;
+  Double_t failing_probe=0;
+  Double_t failing_probe1=0;
+  Double_t passing_probe1=0;
+  Long64_t nbytes = 0, nb = 0;
+  for (Long64_t jentry=0; jentry<nentries;jentry++) {
+    Long64_t ientry = LoadTree(jentry);
+    if (ientry < 0) break;
+    nb = fChain->GetEntry(jentry);   nbytes += nb;
+    // if (Cut(ientry) < 0) continue;                 
+    
+    if(nEle<2) continue;
+    int c=0;
+    int tag;
+    int charge=0;
+    for(Int_t j=0; j<nEle; ++j)
+      {
+	if(efficient_each::test(j)==true)
+	  {
+	    tag = j;
+	    charge = eleCharge->at(j);
+	    v1.SetPtEtaPhiE(elePt->at(j),eleEta->at(j),elePhi->at(j),eleEn->at(j));
+	    c=c+1;
+	    break;
+	  }
+      }
+    Int_t probe;
+    for (int a=0; a<nEle; ++a)
+      {
+	if(a==tag) continue;
+	if(fabs(eleSCEta->at(a))<1.479 && eleHoverE->at(a)<0.0414 && eleSigmaIEtaIEtaFull5x5->at(a)<0.00998 && eleMissHits->at(a)<=1 && eleConvVeto->at(a)==1 && elePt->at(a)>10 && fabs(eleEoverPInv->at(a))<0.0129 && fabs(eledEtaAtVtx->at(a))<0.00308 && /*fabs(eledPhiAtVtx->at(a))<0.0816 && */eleCharge->at(a)!=charge )
+	  {
+	    c=c+1;
+	    v2.SetPtEtaPhiE(elePt->at(a),eleEta->at(a),elePhi->at(a),eleEn->at(a));
+	    probe = a;
+	    
+	    break;
+	  }
+	else if(1.479 < abs(eleSCEta->at(a))  && abs(eleSCEta->at(a))< 2.4 && eleHoverE->at(a)<0.0641 && eleSigmaIEtaIEtaFull5x5->at(a)<0.0292 && eleMissHits->at(a)<=1 && eleConvVeto->at(a)==1 && elePt->at(a)>10 && fabs(eleEoverPInv->at(a))<0.0129 && fabs(eledEtaAtVtx->at(a))<0.00605 && /*fabs(eledPhiAtVtx->at(a))<0.0394 && */eleCharge->at(a)!=charge)
+	  {
+	    v2.SetPtEtaPhiE(elePt->at(a),eleEta->at(a),elePhi->at(a),eleEn->at(a));
+	    
+	    probe = a;
+	    c=c+1;
+	    break;
+	  }
+      }
+    Double_t mag = (v1+v2).M();
+    if(c!=2) continue;
+    
+    if(mag>110 || mag<70) continue;
+    
+    if(fabs(eleSCEta->at(probe))<1.479)
+      {
+	if(fabs(eledPhiAtVtx->at(probe))<0.0816)
+	  {
+	    passing_probe1 = passing_probe1 + 1;
+	  }
+	else 
+	  {
+	    failing_probe1 = failing_probe1 + 1;
+	  }
+      }
+    else if(1.479 < abs(eleSCEta->at(probe)) && abs(eleSCEta->at(probe))< 2.4 )
+      {
+	if(fabs(eledPhiAtVtx->at(probe))<0.0394)
+	  {
+	    passing_probe = passing_probe + 1; 
+	  }
+	else
+	  {
+	    failing_probe = failing_probe + 1;
+	  }
+      }
+    
+  }
+  Double_t ef2=passing_probe1/(passing_probe1 + failing_probe1);
+  Double_t ef=passing_probe/(passing_probe + failing_probe);
+  cout<<"endcap : "<<ef<<endl;
+  cout<<"barrel : "<<ef2<<endl;
+}
+

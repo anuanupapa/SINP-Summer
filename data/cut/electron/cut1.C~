@@ -1,0 +1,93 @@
+#define cut1_cxx
+#include "cut1.h"
+#include <TH2.h>
+#include <TStyle.h>
+#include <TCanvas.h>
+
+void cut1::Loop()
+{
+//   In a ROOT session, you can do:
+//      root> .L cut1.C
+//      root> cut1 t
+//      root> t.GetEntry(12); // Fill t data members with entry number 12
+//      root> t.Show();       // Show values of entry 12
+//      root> t.Show(16);     // Read and show values of entry 16
+//      root> t.Loop();       // Loop on all entries
+//
+
+//     This is the loop skeleton where:
+//    jentry is the global entry number in the chain
+//    ientry is the entry number in the current Tree
+//  Note that the argument to GetEntry must be:
+//    jentry for TChain::GetEntry
+//    ientry for TTree::GetEntry and TBranch::GetEntry
+//
+//       To read only selected branches, Insert statements like:
+// METHOD1:
+//    fChain->SetBranchStatus("*",0);  // disable all branches
+//    fChain->SetBranchStatus("branchname",1);  // activate branchname
+// METHOD2: replace line
+//    fChain->GetEntry(jentry);       //read all branches
+//by  b_branchname->GetEntry(ientry); //read only this branch
+   if (fChain == 0) return;
+
+   Long64_t nentries = fChain->GetEntriesFast();
+   auto t = new TCanvas();
+   Long64_t nbytes = 0, nb = 0;
+   auto h1 = new TH1F("h1","histo_cut_all",200,0,200);
+   auto h2 = new TH1F("h2","histo",200,0,200);
+   for (Long64_t jentry=0; jentry<nentries;jentry++) {
+     Long64_t ientry = LoadTree(jentry);
+     if (ientry < 0) break;
+     nb = fChain->GetEntry(jentry);   nbytes += nb;
+     // if (Cut(ientry) < 0) continue;
+     if(!(nEle>1)) continue;
+     int m=0;
+     int r=0;
+     TLorentzVector v1,v2;
+     float mag1=0;
+     //float mag2=0;
+     for(int i=0; i<nEle; ++i)
+       {
+	 if(elePt->at(i)<10) continue;
+	 
+	 if(fabs(eleSCEta->at(i))<1.479 && eleHoverE->at(i)<0.0414 && eleSigmaIEtaIEtaFull5x5->at(i)<0.00998 &&  eleMissHits->at(i)<=1 && eleConvVeto->at(i)==1 )
+	   {
+	     if(m==0)
+	       {
+		 v1.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+		 m=m+1;
+		 r=r+1;
+	       }
+	     else {
+	       v2.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+	       r=r+1;
+	       break;
+	     }
+	   }
+	 else if(1.479 < abs(eleSCEta->at(i))  && abs(eleSCEta->at(i))< 2.4 && eleHoverE->at(i)<0.0641 &&  eleSigmaIEtaIEtaFull5x5->at(i)<0.0292 && eleMissHits->at(i)<=1 &&  eleConvVeto->at(i)==1 )
+	   {
+	     if(m==0)
+	       {
+		 v1.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+		 r=r+1;
+		 m=m+1;
+	       }
+	     else  {
+	       v2.SetPtEtaPhiE(elePt->at(i),eleEta->at(i),elePhi->at(i),eleEn->at(i));
+	       r=r+1;
+	       break;
+	     }
+	   }
+
+       }
+     if(r==2){
+     mag1=(v1+v2).M();
+     h1->Fill(mag1);
+     }
+  
+}
+   h1->Draw();
+   t->Print("ZBosons_cut_all.pdf");
+   
+}
